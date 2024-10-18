@@ -1,0 +1,16 @@
+{% extends "base.html" %} {% block content %}
+<h1 class="mb-4">Welcome to the Vulnerable Flask App</h1>
+<p>
+  This application is intentionally vulnerable for learning and testing
+  purposes.
+</p>
+
+<div class="mt-4">
+  <h2>Available Actions</h2>
+  <ul>
+    <li><a href="{{ url_for('register') }}">Register</a></li>
+    <li><a href="{{ url_for('login') }}">Login</a></li>
+    <li><a href="{{ url_for('store') }}">Visit the Store</a></li>
+  </ul>
+</div>
+{% endblock %}
