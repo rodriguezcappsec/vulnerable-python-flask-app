@@ -1,0 +1,40 @@
+{% extends "base.html" %} {% block content %}
+<h2>Store</h2>
+<div class="row">
+  {% for product in products %}
+  <div class="col-md-4 mb-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">{{ product.name }}</h5>
+        <p class="card-text">Price: ${{ product.price }}</p>
+        <p class="card-text">{{ product.description }}</p>
+        <!-- Optional: Product description -->
+
+        <!-- Add to Cart Form -->
+        <form action="{{ url_for('add_to_cart') }}" method="POST">
+          <input type="hidden" name="product_id" value="{{ product.id }}" />
+          <div class="form-group">
+            <label for="quantity">Quantity</label>
+            <input
+              type="number"
+              name="quantity"
+              min="1"
+              value="1"
+              class="form-control"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Add to Cart</button>
+        </form>
+
+        <!-- View Product Button -->
+        <a
+          href="{{ url_for('product', name=product.name) }}"
+          class="btn btn-secondary mt-2"
+          >View Details</a
+        >
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

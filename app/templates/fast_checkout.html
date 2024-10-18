@@ -1,0 +1,27 @@
+{% extends "base.html" %} {% block content %}
+<h2>Fast Checkout</h2>
+<form method="POST">
+  <div class="form-group">
+    <label for="product_id">Product ID</label>
+    <input
+      type="number"
+      name="product_id"
+      class="form-control"
+      value="{{ product_id }}"
+      readonly
+    />
+  </div>
+  <div class="form-group">
+    <label for="quantity">Quantity</label>
+    <input
+      type="number"
+      name="quantity"
+      class="form-control"
+      min="1"
+      value="1"
+      required
+    />
+  </div>
+  <button type="submit" class="btn btn-primary">Fast Checkout</button>
+</form>
+{% endblock %}
