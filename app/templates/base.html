@@ -43,7 +43,8 @@
           </li>
         </ul>
         <ul class="navbar-nav ml-auto">
-          {% if 'user_id' in session %}
+          {% if session.get('user_id') %}
+          <!-- Show these links only if the user is logged in -->
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
           </li>
@@ -51,6 +52,7 @@
             <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
           </li>
           {% else %}
+          <!-- Show these links only if the user is not logged in -->
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('login') }}">Login</a>
           </li>

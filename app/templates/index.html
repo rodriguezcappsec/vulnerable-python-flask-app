@@ -8,9 +8,12 @@
 <div class="mt-4">
   <h2>Available Actions</h2>
   <ul>
+    {% if session.get('user_id') %}
+    <li><a href="{{ url_for('store') }}">Visit the Store</a></li>
+    {% else %}
     <li><a href="{{ url_for('register') }}">Register</a></li>
     <li><a href="{{ url_for('login') }}">Login</a></li>
-    <li><a href="{{ url_for('store') }}">Visit the Store</a></li>
+    {% endif %}
   </ul>
 </div>
 {% endblock %}

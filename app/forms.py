@@ -11,6 +11,13 @@ class LoginForm(FlaskForm):
 
 class RegisterForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
-    email = StringField("Email", validators=[DataRequired()])
+    email = StringField("Email", validators=[DataRequired()])  # No email validation
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Register")
+
+
+class PaymentForm(FlaskForm):
+    card_number = StringField("Card Number", validators=[DataRequired()])
+    expiration = StringField("Expiration Date (MM/YY)", validators=[DataRequired()])
+    cvv = PasswordField("CVV", validators=[DataRequired()])
+    submit = SubmitField("Submit Payment")

@@ -1,8 +1,11 @@
 from flask import render_template, redirect, url_for, flash, request, session
 from app import app, db
-from app.models import User, Product, Order, CartItem
+from app.models import User, Product, Order, CartItem, Payment
 from app.forms import LoginForm, RegisterForm
 import random
+import jwt
+
+SECRET_KEY = "simplekey"
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -28,21 +31,50 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
+
+    # Session fixation vulnerability
+    session["pre_login_value"] = "fixed-session-id"
+
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
-        if not user:
-            flash("User not found", "danger")
-            return redirect(url_for("login"))
-
+        # Use the MD5 hashing method from the User model
         hashed_password = User.hash_password(form.password.data)
-        if user.password != hashed_password:
-            flash("Incorrect password", "danger")
+        if user and user.password == hashed_password:
+            # Session fixation: Session ID not renewed upon login
+            session["user_id"] = user.id
+
+            # Create a vulnerable JWT token
+            token = jwt.encode({"user_id": user.id}, SECRET_KEY, algorithm="HS256")
+            session["jwt"] = token
+
+            flash("Login successful!", "success")
+            return redirect(url_for("index"))
+        flash("Invalid username or password", "danger")
+    return render_template("login.html", form=form)
+
+
+@app.route("/protected")
+def protected():
+    token = session.get("jwt")
+    if not token:
+        flash("You must be logged in to access this page.", "danger")
+        return redirect(url_for("login"))
+
+    try:
+        # Decode the JWT (this example still has the vulnerability: no signature verification)
+        decoded = jwt.decode(
+            token, options={"verify_signature": False}, algorithms=["HS256"]
+        )
+        user_id = decoded.get("user_id")
+        if not user_id:
+            flash("Invalid token.", "danger")
             return redirect(url_for("login"))
 
-        session["user_id"] = user.id
-        flash("Logged in successfully!", "success")
-        return redirect(url_for("store"))
-    return render_template("login.html", form=form)
+        user = User.query.get(user_id)
+        return render_template("protected.html", user=user)
+    except jwt.DecodeError:
+        flash("Invalid token.", "danger")
+        return redirect(url_for("login"))
 
 
 @app.route("/logout")
@@ -124,27 +156,52 @@ def cart():
 @app.route("/checkout", methods=["GET", "POST"])
 def checkout():
     if "user_id" not in session:
-        flash("Please log in to checkout.", "danger")
+        flash("Please log in to proceed to checkout.", "danger")
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
     cart_items = db.session.query(CartItem).filter_by(user_id=user_id).all()
 
+    # Calculate the total price based on the items in the cart
     total_price = sum(
         item.quantity * Product.query.get(item.product_id).price for item in cart_items
     )
 
     if request.method == "POST":
+        # Fetch payment details from the form
+        card_number = request.form.get("card_number")
+        expiration = request.form.get("expiration")
+        cvv = request.form.get("cvv")
+
+        # Process each item in the cart and reduce stock accordingly
         for item in cart_items:
             product = Product.query.get(item.product_id)
             if product and product.stock >= item.quantity:
                 product.stock -= item.quantity
-                db.session.delete(item)  # Remove the item from cart after checkout
             else:
                 flash(f"Not enough stock for product: {product.name}.", "danger")
                 return redirect(url_for("cart"))
 
+        # Simulate storing payment information insecurely
+        payment_record = Payment(
+            user_id=user_id,
+            product_id=cart_items[
+                0
+            ].product_id,  # For simplicity, use the first product ID
+            quantity=sum(item.quantity for item in cart_items),
+            card_number=card_number,  # Vulnerable: Storing card number in plain text
+            expiration=expiration,
+            cvv=cvv,  # Vulnerable: Storing CVV in plain text
+            total_price=total_price,
+        )
+        db.session.add(payment_record)
         db.session.commit()
+
+        # Clear the user's cart after checkout
+        for item in cart_items:
+            db.session.delete(item)
+        db.session.commit()
+
         flash(f"Checkout successful! Total: ${total_price}", "success")
         return redirect(url_for("index"))
 
