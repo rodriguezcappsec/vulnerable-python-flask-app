@@ -1,20 +1,32 @@
 from app import db
 import hashlib
+import argon2
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class User(db.Model):
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(
+        db.String(120),
+        unique=True,
+        nullable=False,
+    )
     password = db.Column(db.String(60), nullable=False)
-
     cart_items = db.relationship("CartItem", backref="user", lazy=True)
 
     @staticmethod
     def hash_password(password):
-        # Vulnerability: Using MD5 for password hashing (insecure)
-        return hashlib.md5(password.encode()).hexdigest()
+        # Use Argon2 for password hashing
+        try:
+            return argon2.PasswordHasher().hash(password)
+        except argon2.exceptions.HashingError as e:
+            logging.basicConfig(filename=f"{__name__}.log", level=logging.ERROR)
+            logger.info(f"Password hashing failed: {e}")
+            raise ValueError("Password hashing failed") from e
 
 
 class Product(db.Model):

@@ -1,9 +1,21 @@
-from flask import render_template, redirect, url_for, flash, request, session
+from flask import (
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    session,
+    make_response,
+    jsonify,
+)
 from app import app, db
 from app.models import User, Product, Order, CartItem, Payment
 from app.forms import LoginForm, RegisterForm
 import random
 import jwt
+import logging, datetime, argon2
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEY = "simplekey"
 
@@ -12,9 +24,12 @@ SECRET_KEY = "simplekey"
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-        existing_user = User.query.filter_by(username=form.username.data).first()
+        existing_user = (
+            User.query.filter_by(email=form.email.data).first()
+            or User.query.filter_by(username=form.username.data).first()
+        )
         if existing_user:
-            flash("Username already taken", "danger")
+            flash("User already exists", "danger")
             return redirect(url_for("register"))
 
         hashed_password = User.hash_password(form.password.data)
@@ -31,22 +46,20 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-
-    # Session fixation vulnerability
-    session["pre_login_value"] = "fixed-session-id"
-
+    verify_password = argon2.PasswordHasher().verify
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        # Use the MD5 hashing method from the User model
-        hashed_password = User.hash_password(form.password.data)
-        if user and user.password == hashed_password:
-            # Session fixation: Session ID not renewed upon login
+        user = User.query.filter_by(email=form.email.data).first()
+        if user and verify_password(user.password, form.password.data):
             session["user_id"] = user.id
-
-            # Create a vulnerable JWT token
-            token = jwt.encode({"user_id": user.id}, SECRET_KEY, algorithm="HS256")
+            token = jwt.encode(
+                {
+                    "user_id": user.id,
+                    "exp": datetime.datetime.now() + datetime.timedelta(hours=1),
+                },
+                SECRET_KEY,
+                algorithm="HS256",
+            )
             session["jwt"] = token
-
             flash("Login successful!", "success")
             return redirect(url_for("index"))
         flash("Invalid username or password", "danger")
